@@ -11,6 +11,7 @@ import time
 songs_names_list = []
 songs_ratings_list = []
 base_url = 'https://www.hotnewhiphop.com'
+artist_name = ''
 
 def main():
     start = time.time()
@@ -20,12 +21,19 @@ def main():
 def base_call():
     # Test data
     # Artist: Chief Keef
-    artist = '/chiefkeef'
+    artist = '/drake'
+    global artist_name
     artist_all_songs_page_count = 0
 
     songs_list_base_url = base_url + artist + '/songs/'
     songs_list_base_req = requests.get(songs_list_base_url)
-    songs_list_base_soup = BeautifulSoup(songs_list_base_req.text, 'lxml', parse_only=SoupStrainer('a'))
+    songs_list_base_soup = BeautifulSoup(songs_list_base_req.text, 'lxml')
+
+    if 'Songs' in songs_list_base_soup.find('title').string:
+        artist_name = songs_list_base_soup.find('title').string[:-6]
+    else: artist_name = songs_list_base_soup.find('title').string
+
+    print(artist_name)
 
     # get the page count so we can iterate through pages.
     artist_all_songs_page_count = get_all_page_count(songs_list_base_soup)
@@ -38,39 +46,45 @@ def iterate_pages(soup, page_count):
 
         if soup.find('a', class_="next-page", href=True) is not None:
             next_page_url = base_url + soup.find('a', class_="next-page", href=True)['href']
-            # print(next_page_url)
             next_page_req = requests.get(next_page_url)
-            soup = BeautifulSoup(next_page_req.text, 'lxml', parse_only=SoupStrainer('a'))
-            
+            soup = BeautifulSoup(next_page_req.text, 'lxml')
 
-# get singular songs page data, contains up to 20.
+
+# get singular songs page data, contains up to 20 per page.
 def get_page_data(soup):
-    # gang
-    songs_on_page = list(map(lambda u: base_url + u['href'],
-        soup.find_all('a', class_="cover-title endlessScrollCommon-title-anchor song", href=True)))
+    # filter for the songs that are relevant.
+    # Removes songs not by the artist we want.
+    relevant_songs = list(filter(lambda x: True if artist_name in str(x.find('div', class_="endlessScrollCommon-artist")) else False,
+    soup.find_all('div', class_="endlessScrollCommon-title song")))
+
+    songs_on_page = []
+
+    for song in relevant_songs:
+        songs_on_page.append(base_url + str(song.find('a', class_="endlessScrollCommon-title-anchor")['href']))
 
     reqs = (grequests.get(url) for url in songs_on_page)
     resp = grequests.map(reqs)
 
     for r in resp:
-        song_soup = BeautifulSoup(r.text, 'lxml', parse_only=SoupStrainer("span"))
+        song_soup = BeautifulSoup(r.text, 'lxml')
         get_song_data(song_soup)
 
 
 def get_song_data(soup):
-    print(soup.find('span', class_="song-info-title").string)
+    print("Song:\t", soup.find('span', class_="song-info-title").string)
+    print("Rating:\t", re.findall('(\d+(\.\d)?%)', str(soup.find('div', class_="interactiveReview-userTooltip-percentage")))[0][0])
+    print("Link:\t", soup.find('meta', property="og:url")['content'])
+
 
 
 # gets all the pages the artist has.
 def get_all_page_count(soup):
-
     # find the link in which the page count is contained.
     if soup.find('a', class_="last-page", href=True) is None:
         get_page_data(soup)
     else:
         page_link = soup.find('a', class_="last-page", href=True)['href']
         # extract the digit in the string.
-        print("multiple pages")
         iterate_pages(soup, re.findall('\d+', page_link)[0])
 
 
