@@ -6,6 +6,7 @@ import scraper
 app = Flask(__name__)
 api = Api(app)
 
+
 class ArtistData(Resource):
 
     def get(self, name):
