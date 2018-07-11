@@ -1,1 +1,1 @@
-web: gunicorn app:rest.py
+web: gunicorn app:rest --log-file=-
