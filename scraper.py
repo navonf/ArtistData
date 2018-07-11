@@ -104,5 +104,5 @@ def get_all_page_count(soup, artist_data):
         print("multiple pages")
         iterate_pages(soup, re.findall('\d+', page_link)[0], artist_data)
 
-# if __name__ == '__main__':
-#     basecall('frankocean')
+if __name__ == '__main__':
+    basecall('frankocean')
