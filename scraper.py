@@ -22,7 +22,6 @@ def base_call(artistname):
     artist = '/' + artistname
     global artist_name
 
-    start_time = time.time()
     artist_data = []
     artist_all_songs_page_count = 0
 
@@ -39,7 +38,6 @@ def base_call(artistname):
     # get the page count so we can iterate through pages.
     artist_all_songs_page_count = get_all_page_count(songs_list_base_soup, artist_data, songs_list_base_url)
     print(artist_data)
-    print("Took ", time.time() - start_time)
     return artist_data
 
 
@@ -70,19 +68,7 @@ def batch_job(worker, soup, artist_data, next_page_urls_list):
         for song in relevant_songs:
             songs_on_page.append(base_url + str(song.find('a', class_="endlessScrollCommon-title-anchor")['href']))
 
-        reqs = (grequests.get(url) for url in songs_on_page)
-        resp = grequests.map(reqs)
-
-        print(resp)
-
-        for r in resp:
-            song_soup = BeautifulSoup(r.text, 'lxml')
-            data = {}
-            data['song'] = song_soup.find('span', class_="song-info-title").string
-            data['rating'] = re.findall('(\d+(\.\d)?%)', str(song_soup.find('div', class_="interactiveReview-userTooltip-percentage")))[0][0]
-            data['link'] = song_soup.find('meta', property="og:url")['content']
-            artist_data.append(data)
-
+        artist_data.append(songs_on_page)
 
 
 
@@ -104,7 +90,7 @@ def iterate_pages_batch(soup, page_count, artist_data, songs_list_base_url):
         next_page_urls_list.put(songs_list_base_url + str(i) + '/')
 
     # TODO: spawn a thread for each link in the list
-    #  shared varilable that will be updated by all the threads
+    # shared varilable that will be updated by all the threads
     # artist_data_lock = threading.Lock()
     q = Queue()
 
@@ -172,10 +158,8 @@ def get_all_page_count(soup, artist_data, songs_list_base_url):
         # extract the digit in the string.
         page_count = int(re.findall('\d+', page_link)[0])
 
-        # do batch requests if the artist has more than 5 pages
         iterate_pages_batch(soup, page_count, artist_data, songs_list_base_url)
-        # else: iterate_pages(soup, page_count, artist_data)
 
 
 # if __name__ == '__main__':
-#     base_call('chiefkeef')
+#     base_call('migos')
